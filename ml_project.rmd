@@ -1,0 +1,76 @@
+---
+title: "Practical Machine Learning - Course Project"
+author: "bquiq"
+date: "12 février 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Summary
+The goal of this project is to predict how people perform barbell lifts using data from personal training devices. It is a classification task (5 different ways are distinghished).
+We use for that task the random forest algorithm and assess the accuracy of our predictions.
+
+# 2. Data analysis
+
+## 2.1 Data preparation
+In a first step, we prepare a data set suitable for the algorithm we intend to use. We remove variables with missing values and non relevant features.
+The random forest performs generally well with classification tasks and does not require further preprocessing.
+
+```{r, results='hide',warning=FALSE,message=FALSE,cache=TRUE}
+# Required libraries
+library(caret)
+library(randomForest)
+
+# Getting the data
+train.source<-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test.source<-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+training<-read.csv(train.source,na.strings = c("NA", "#DIV/0!"))
+testing<-read.csv(test.source,na.strings = c("NA", "#DIV/0!"))
+
+# Data preparation
+str(training)
+
+# Removing variables with missing values
+training<-training[,colSums(is.na(training)) == 0]
+cn<-colnames(subset(training,select=-classe))
+testing<-testing[,cn]
+
+# Removing non relevant variables
+training<-training[,-(1:7)]
+testing<-testing[,-(1:7)]
+
+nearZeroVar(training,saveMetrics = T)
+
+```
+## 2.2 Study design and training
+We first split our data in a training and a testing sets. The testing set will just be used for assessing the performance of the algorithm on new data (out of sample error).
+In order to avoid overfitting, we use k-fold cross-validation (10 folds) during the training step.
+
+```{r, results='hide',warning=FALSE,message=FALSE,cache=TRUE}
+# 2. Data Slicing
+set.seed(235)
+
+inTrain<-createDataPartition(y=training$classe,p=0.7,list=F)
+tr_training<-training[inTrain,]
+te_training<-training[-inTrain,]
+rf.model<-train(classe~.,method="rf",data=tr_training,trControl=trainControl(method="cv",number=10))
+```
+
+## 2.3 Accuracy
+The algorithm performs very well. The accuracy on the test data is 99.4%.
+
+```{r, cache=TRUE}
+rf.model$finalModel
+preds<-predict(rf.model,te_training)
+confusionMatrix(preds,te_training$classe)
+```
+
+
+
+
+
+
